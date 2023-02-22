@@ -35,7 +35,8 @@ def main() -> None:
 
 
     LOG.info("Generating F1040 Schedule B...")
-    with open('output/f1040sb.csv', 'w', newline='') as file:
+    f1040sb_file = 'output/f1040sb.csv'
+    with open(f1040sb_file, 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["1", ""])
         f1099int.to_csv(file, mode="w+", index=False, header=False)
@@ -45,13 +46,22 @@ def main() -> None:
         writer.writerow([5, ""])
         f1099div.to_csv(file, mode="w+", index=False, header=False)
 
+    f1040sb2 = {}  # Second half of F1040 SB. Two parts to cope with multi-line boxes above.
     f1040['3a'] = 0  # Qualified dividends
-    f1040sb[6] = f1099div.amount.sum()
-    f1040["3b"] = f1040sb[6]  # Ordinary dividends
-    if f1040sb[6] > 1500:
+    f1040sb2[6] = f1099div.amount.sum()
+    f1040["3b"] = f1040sb2[6]  # Ordinary dividends
+    if f1040sb2[6] > 1500:
         must_complete_1040sb_part3 = True
     if must_complete_1040sb_part3:
         LOG.info("Must complete F1040 Schedule B Part III.")
+    # Part III
+    f1040sb2["7a"] = [True, True]
+    f1040sb2["7b"] = "China"
+    f1040sb2["8"] = False  # foreign trust
+    with open(f1040sb_file, 'a', newline='') as file:
+        writer = csv.writer(file)
+        for k, v in f1040sb2.items():
+            writer.writerow([k, v])
 
     f1040['4a'] = f1040["4b"] = 0
     f1040['5a'] = 0
