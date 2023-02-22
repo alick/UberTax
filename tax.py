@@ -10,20 +10,6 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO)
     w2_1 = pd.read_csv('input/w2_1.csv')
     w2_2 = pd.read_csv('input/w2_2.csv')
-
-    f1099int = pd.read_csv('input/1099-INT.csv')
-    f1040sb = {}
-    f1040sb[2] = f1099int.box1.sum()
-    f1040sb[3] = 0
-
-    LOG.info("Generating F1040 Schedule B...")
-    with open('output/f1040sb.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["1", ""])
-        f1099int.to_csv(file, mode="w+", index=False, header=False)
-        for k, v in f1040sb.items():
-            writer.writerow([k, v])
-
     f1040 = {}
     f1040['1a'] = w2_1.iloc[0]['box1'] + w2_2.iloc[0]['box1']
     f1040['1b'] = 0
@@ -36,11 +22,37 @@ def main() -> None:
     f1040['1i'] = 0
     f1040['1z'] = f1040['1a'] + f1040['1b'] + f1040['1c'] + f1040['1d'] + f1040['1e'] + f1040['1f'] + f1040['1g'] + f1040['1h']
 
-    f1040['2a'] = 0
+    f1040['2a'] = 0  # Tax-Exempt Interest
 
-    f1040['2b'] = 0
-    f1040['3a'] = 0
-    f1040['3b'] = 0
+    f1099int = pd.read_csv('input/1099-INT.csv')
+    f1099div = pd.read_csv('input/1099-DIV.csv')
+    f1040sb = {}
+    f1040sb[2] = f1099int.box1.sum()
+    f1040sb[3] = 0  # Excludable interest on series EE and I U.S. savings bonds issued after 1989
+    f1040sb[4] = f1040sb[2] - f1040sb[3]
+    f1040['2b'] = f1040sb[4]  # Taxable Interest
+    must_complete_1040sb_part3 = f1040sb[4] > 1500
+
+
+    LOG.info("Generating F1040 Schedule B...")
+    with open('output/f1040sb.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["1", ""])
+        f1099int.to_csv(file, mode="w+", index=False, header=False)
+        for k, v in f1040sb.items():
+            writer.writerow([k, v])
+        # Part II
+        writer.writerow([5, ""])
+        f1099div.to_csv(file, mode="w+", index=False, header=False)
+
+    f1040['3a'] = 0  # Qualified dividends
+    f1040sb[6] = f1099div.amount.sum()
+    f1040["3b"] = f1040sb[6]  # Ordinary dividends
+    if f1040sb[6] > 1500:
+        must_complete_1040sb_part3 = True
+    if must_complete_1040sb_part3:
+        LOG.info("Must complete F1040 Schedule B Part III.")
+
     f1040['4a'] = f1040["4b"] = 0
     f1040['5a'] = 0
     f1040['5b'] = 0
